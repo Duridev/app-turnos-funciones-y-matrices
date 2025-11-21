@@ -1,74 +1,92 @@
+"""Lógica principal para calcular la asignación de turnos.
+
+Este módulo contiene las funciones que convierten la demanda semanal
+en una distribución de trabajadores por turno/día y que luego generan
+los horarios individuales por trabajador.
+
+Conceptos clave:
+- FT (Full-Time): trabajan de lunes a viernes y parte del fin de semana
+- PT (Part-Time): trabajan únicamente fines de semana
+- Se calculan cuántos FT descansan el sábado y cuántos el domingo
+  según el tipo (A/B) y la división de la plantilla.
+"""
+
 import numpy as np
 from leer_excel import leer_parametros
 
 
 def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_sab, descanso_dom):
-    """
-    Genera el horario semanal para cada trabajador.
-    
+    """Construye un diccionario con el horario semanal de cada trabajador.
+
+    La función distribuye primero a los trabajadores Full-Time (FT) entre
+    los turnos de cada día respetando los descansos asignados en fin de semana.
+    Si en fin de semana hay necesidad adicional se asignan Part-Time (PT).
+
     Args:
-        matriz_turnos: Matriz 7x3 con cantidad de trabajadores por turno/día
-        total_ft: Total de trabajadores full-time
-        total_pt: Total de trabajadores part-time
-        descanso_sab: Cantidad de FT que descansan el sábado
-        descanso_dom: Cantidad de FT que descansan el domingo
-    
+        matriz_turnos (array-like): Matriz 7x3 con cantidades por día/turno
+        total_ft (int): número total de FT
+        total_pt (int): número total de PT
+        descanso_sab (int): número de FT que descansan el sábado
+        descanso_dom (int): número de FT que descansan el domingo
+
     Returns:
-        dict: Horario semanal de cada trabajador {nombre: {dia: turno}}
+        dict: { 'Trabajador XX': { 'Lunes': 'Mañana', ... }, 'Part-Time XX': {...} }
     """
     dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     horarios = {}
-    
-    # Inicializar horarios para trabajadores Full-time
+
+    # Inicializar todos los FT como 'Libre' por defecto (se asignarán turnos)
     for i in range(1, total_ft + 1):
         nombre = f"Trabajador {i:02d}"
         horarios[nombre] = {dia: "Libre" for dia in dias}
-    
-    # Inicializar horarios para trabajadores Part-time
+
+    # Inicializar PT: '-' entre semana (no trabajan) y 'Libre' en fin de semana
     for i in range(1, total_pt + 1):
         nombre = f"Part-Time {i:02d}"
-        # Part-time tienen "-" de lunes a viernes (no trabajan) y "Libre" en fin de semana
         horarios[nombre] = {}
         for dia in dias:
             if dia in ["Sábado", "Domingo"]:
                 horarios[nombre][dia] = "Libre"
             else:
                 horarios[nombre][dia] = "-"
-    
-    # Determinar qué trabajadores FT descansan en fin de semana
-    # Primera mitad descansa sábado, segunda mitad descansa domingo
+
+    # Determinar índices de FT que descansan cada día del fin de semana.
+    # La lógica actual reparte la plantilla en dos mitades.
     trabajadores_descansan_sabado = set(range(1, descanso_sab + 1))
     trabajadores_descansan_domingo = set(range(descanso_sab + 1, total_ft + 1))
-    
-    # Asignar turnos por día
+
+    # Asignar por cada día los turnos de Mañana, Intermedio y Tarde
     for i, dia in enumerate(dias):
         manana_count = int(matriz_turnos[i][0])
         intermedio_count = int(matriz_turnos[i][1])
         tarde_count = int(matriz_turnos[i][2])
-        
-        trabajador_idx = 1
-        
+
+        # -----------------
         # Asignar Mañana
+        # -----------------
+        trabajador_idx = 1
         for _ in range(manana_count):
             if trabajador_idx <= total_ft:
-                # Verificar si este trabajador descansa este día
+                # Saltar FT que descansan el fin de semana correspondientemente
                 if dia == "Sábado" and trabajador_idx in trabajadores_descansan_sabado:
                     trabajador_idx += 1
                     continue
                 if dia == "Domingo" and trabajador_idx in trabajadores_descansan_domingo:
                     trabajador_idx += 1
                     continue
-                
+
                 nombre = f"Trabajador {trabajador_idx:02d}"
                 horarios[nombre][dia] = "Mañana"
                 trabajador_idx += 1
-        
-        # Asignar Intermedio (incluyendo PT en fin de semana)
+
+        # -----------------
+        # Asignar Intermedio
+        # Prioriza FT; si faltan FT en fin de semana, usa PT
+        # -----------------
         intermedio_asignados = 0
         trabajador_idx = 1
-        
+
         while intermedio_asignados < intermedio_count:
-            # Intentar asignar FT primero
             if trabajador_idx <= total_ft:
                 if dia == "Sábado" and trabajador_idx in trabajadores_descansan_sabado:
                     trabajador_idx += 1
@@ -76,14 +94,14 @@ def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_s
                 if dia == "Domingo" and trabajador_idx in trabajadores_descansan_domingo:
                     trabajador_idx += 1
                     continue
-                
+
                 nombre = f"Trabajador {trabajador_idx:02d}"
                 if horarios[nombre][dia] == "Libre":
                     horarios[nombre][dia] = "Intermedio"
                     intermedio_asignados += 1
                 trabajador_idx += 1
             else:
-                # Si no hay más FT disponibles y es fin de semana, asignar PT
+                # Asignar PT si es fin de semana y faltan personas
                 if dia in ["Sábado", "Domingo"]:
                     pt_idx = intermedio_asignados - (trabajador_idx - total_ft - 1)
                     if pt_idx < total_pt:
@@ -94,13 +112,15 @@ def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_s
                         break
                 else:
                     break
-        
-        # Asignar Tarde (incluyendo PT en fin de semana)
+
+        # -----------------
+        # Asignar Tarde
+        # Similar a Intermedio: FT primero, PT en fin de semana si hace falta
+        # -----------------
         tarde_asignados = 0
         trabajador_idx = 1
-        
+
         while tarde_asignados < tarde_count:
-            # Intentar asignar FT primero
             if trabajador_idx <= total_ft:
                 if dia == "Sábado" and trabajador_idx in trabajadores_descansan_sabado:
                     trabajador_idx += 1
@@ -108,14 +128,13 @@ def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_s
                 if dia == "Domingo" and trabajador_idx in trabajadores_descansan_domingo:
                     trabajador_idx += 1
                     continue
-                
+
                 nombre = f"Trabajador {trabajador_idx:02d}"
                 if horarios[nombre][dia] == "Libre":
                     horarios[nombre][dia] = "Tarde"
                     tarde_asignados += 1
                 trabajador_idx += 1
             else:
-                # Si no hay más FT disponibles y es fin de semana, asignar PT
                 if dia in ["Sábado", "Domingo"]:
                     pt_idx = tarde_asignados - (trabajador_idx - total_ft - 1)
                     if pt_idx < total_pt:
@@ -127,12 +146,21 @@ def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_s
                         break
                 else:
                     break
-    
+
     return horarios
 
 
 def generar_asignacion(TOTAL_FT, TOTAL_PT, tipo, demanda):
-    # Convertimos la demanda del Excel a una matriz igual a tu afluencia base
+    """Calcula la matriz de asignación por día/turno y genera horarios individuales.
+
+    Pasos principales:
+    1. Convertir la `demanda` (diccionario) a una matriz NumPy de afluencias.
+    2. Determinar cuántos FT descansan el sábado y el domingo según `tipo`.
+    3. Distribuir los FT por turno cada día proporcionalmente a la afluencia.
+    4. Añadir PT a los turnos de fin de semana.
+    5. Llamar a `generar_horario_por_trabajador` para obtener los horarios por persona.
+    """
+    # Convertimos la demanda del Excel a una matriz de afluencias
     afluencias = []
     for valores in demanda.values():
         afluencias.append([
@@ -142,7 +170,7 @@ def generar_asignacion(TOTAL_FT, TOTAL_PT, tipo, demanda):
         ])
     afluencias = np.array(afluencias, dtype=float)
 
-    # --- División FT ---
+    # --- División de la plantilla FT en dos mitades para descanso fin de semana ---
     if TOTAL_FT % 2 == 0:
         mitad1 = mitad2 = TOTAL_FT // 2
     else:
@@ -156,14 +184,14 @@ def generar_asignacion(TOTAL_FT, TOTAL_PT, tipo, demanda):
         descanso_sabado = mitad2
         descanso_domingo = mitad1
 
-    # --- Disponibilidad FT ---
+    # --- Disponibilidad FT por día (restan los que descansan en finde) ---
     ft_por_dia = np.array([
         TOTAL_FT, TOTAL_FT, TOTAL_FT, TOTAL_FT, TOTAL_FT,
         TOTAL_FT - descanso_sabado,
         TOTAL_FT - descanso_domingo,
     ])
 
-    # --- Distribución según afluencia ---
+    # --- Distribución proporcional según afluencia por día ---
     proporciones = afluencias / afluencias.sum(axis=1, keepdims=True)
     asignacion = np.zeros((7, 3), dtype=int)
 
@@ -172,6 +200,7 @@ def generar_asignacion(TOTAL_FT, TOTAL_PT, tipo, demanda):
         base = raw.astype(int)
         diff = ft_por_dia[i] - base.sum()
 
+        # Repartir las unidades restantes por mayor parte decimal
         decimales = raw - base
         indices = np.argsort(decimales)[::-1]
 
@@ -180,13 +209,13 @@ def generar_asignacion(TOTAL_FT, TOTAL_PT, tipo, demanda):
 
         asignacion[i] = base
 
-    # --- PT en fin de semana ---
+    # --- Agregar PT a intermedio y tarde del fin de semana (lógica de negocio) ---
     asignacion[5][1] += TOTAL_PT
     asignacion[5][2] += TOTAL_PT
     asignacion[6][1] += TOTAL_PT
     asignacion[6][2] += TOTAL_PT
 
-    # Generar horario por trabajador
+    # Generar horarios por trabajador (FT y PT)
     horarios_trabajadores = generar_horario_por_trabajador(
         asignacion, TOTAL_FT, TOTAL_PT, descanso_sabado, descanso_domingo
     )
