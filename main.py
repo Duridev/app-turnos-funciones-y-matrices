@@ -27,7 +27,13 @@ def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_s
     # Inicializar horarios para trabajadores Part-time
     for i in range(1, total_pt + 1):
         nombre = f"Part-Time {i:02d}"
-        horarios[nombre] = {dia: "Libre" for dia in dias}
+        # Part-time tienen "-" de lunes a viernes (no trabajan) y "Libre" en fin de semana
+        horarios[nombre] = {}
+        for dia in dias:
+            if dia in ["Sábado", "Domingo"]:
+                horarios[nombre][dia] = "Libre"
+            else:
+                horarios[nombre][dia] = "-"
     
     # Determinar qué trabajadores FT descansan en fin de semana
     # Primera mitad descansa sábado, segunda mitad descansa domingo
