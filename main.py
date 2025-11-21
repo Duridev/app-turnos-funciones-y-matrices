@@ -61,91 +61,72 @@ def generar_horario_por_trabajador(matriz_turnos, total_ft, total_pt, descanso_s
         intermedio_count = int(matriz_turnos[i][1])
         tarde_count = int(matriz_turnos[i][2])
 
+        # Crear lista de trabajadores FT disponibles para este día
+        ft_disponibles = []
+        for idx in range(1, total_ft + 1):
+            # Saltar FT que descansan este día del fin de semana
+            if dia == "Sábado" and idx in trabajadores_descansan_sabado:
+                continue
+            if dia == "Domingo" and idx in trabajadores_descansan_domingo:
+                continue
+            ft_disponibles.append(idx)
+
         # -----------------
         # Asignar Mañana
         # -----------------
-        trabajador_idx = 1
-        for _ in range(manana_count):
-            if trabajador_idx <= total_ft:
-                # Saltar FT que descansan el fin de semana correspondientemente
-                if dia == "Sábado" and trabajador_idx in trabajadores_descansan_sabado:
-                    trabajador_idx += 1
-                    continue
-                if dia == "Domingo" and trabajador_idx in trabajadores_descansan_domingo:
-                    trabajador_idx += 1
-                    continue
-
-                nombre = f"Trabajador {trabajador_idx:02d}"
-                horarios[nombre][dia] = "Mañana"
-                trabajador_idx += 1
+        asignados_manana = 0
+        for idx in ft_disponibles:
+            if asignados_manana >= manana_count:
+                break
+            nombre = f"Trabajador {idx:02d}"
+            horarios[nombre][dia] = "Mañana"
+            asignados_manana += 1
 
         # -----------------
         # Asignar Intermedio
-        # Prioriza FT; si faltan FT en fin de semana, usa PT
+        # Prioriza FT disponibles que aún están libres; si faltan, usa PT en fin de semana
         # -----------------
-        intermedio_asignados = 0
-        trabajador_idx = 1
+        asignados_intermedio = 0
+        for idx in ft_disponibles:
+            if asignados_intermedio >= intermedio_count:
+                break
+            nombre = f"Trabajador {idx:02d}"
+            if horarios[nombre][dia] == "Libre":
+                horarios[nombre][dia] = "Intermedio"
+                asignados_intermedio += 1
 
-        while intermedio_asignados < intermedio_count:
-            if trabajador_idx <= total_ft:
-                if dia == "Sábado" and trabajador_idx in trabajadores_descansan_sabado:
-                    trabajador_idx += 1
-                    continue
-                if dia == "Domingo" and trabajador_idx in trabajadores_descansan_domingo:
-                    trabajador_idx += 1
-                    continue
-
-                nombre = f"Trabajador {trabajador_idx:02d}"
+        # Si faltan asignaciones de intermedio y es fin de semana, usar PT
+        if asignados_intermedio < intermedio_count and dia in ["Sábado", "Domingo"]:
+            pt_idx = 1
+            while asignados_intermedio < intermedio_count and pt_idx <= total_pt:
+                nombre = f"Part-Time {pt_idx:02d}"
                 if horarios[nombre][dia] == "Libre":
-                    horarios[nombre][dia] = "Intermedio"
-                    intermedio_asignados += 1
-                trabajador_idx += 1
-            else:
-                # Asignar PT si es fin de semana y faltan personas
-                if dia in ["Sábado", "Domingo"]:
-                    pt_idx = intermedio_asignados - (trabajador_idx - total_ft - 1)
-                    if pt_idx < total_pt:
-                        nombre = f"Part-Time {pt_idx + 1:02d}"
-                        horarios[nombre][dia] = "Part-Time"
-                        intermedio_asignados += 1
-                    else:
-                        break
-                else:
-                    break
+                    horarios[nombre][dia] = "Part-Time"
+                    asignados_intermedio += 1
+                pt_idx += 1
 
         # -----------------
         # Asignar Tarde
-        # Similar a Intermedio: FT primero, PT en fin de semana si hace falta
+        # Similar a Intermedio: FT disponibles primero, PT en fin de semana si hace falta
         # -----------------
-        tarde_asignados = 0
-        trabajador_idx = 1
+        asignados_tarde = 0
+        for idx in ft_disponibles:
+            if asignados_tarde >= tarde_count:
+                break
+            nombre = f"Trabajador {idx:02d}"
+            if horarios[nombre][dia] == "Libre":
+                horarios[nombre][dia] = "Tarde"
+                asignados_tarde += 1
 
-        while tarde_asignados < tarde_count:
-            if trabajador_idx <= total_ft:
-                if dia == "Sábado" and trabajador_idx in trabajadores_descansan_sabado:
-                    trabajador_idx += 1
-                    continue
-                if dia == "Domingo" and trabajador_idx in trabajadores_descansan_domingo:
-                    trabajador_idx += 1
-                    continue
-
-                nombre = f"Trabajador {trabajador_idx:02d}"
+        # Si faltan asignaciones de tarde y es fin de semana, usar PT
+        if asignados_tarde < tarde_count and dia in ["Sábado", "Domingo"]:
+            pt_idx = 1
+            while asignados_tarde < tarde_count and pt_idx <= total_pt:
+                nombre = f"Part-Time {pt_idx:02d}"
                 if horarios[nombre][dia] == "Libre":
-                    horarios[nombre][dia] = "Tarde"
-                    tarde_asignados += 1
-                trabajador_idx += 1
-            else:
-                if dia in ["Sábado", "Domingo"]:
-                    pt_idx = tarde_asignados - (trabajador_idx - total_ft - 1)
-                    if pt_idx < total_pt:
-                        nombre = f"Part-Time {pt_idx + 1:02d}"
-                        if horarios[nombre][dia] == "Libre":
-                            horarios[nombre][dia] = "Part-Time"
-                        tarde_asignados += 1
-                    else:
-                        break
-                else:
-                    break
+                    horarios[nombre][dia] = "Part-Time"
+                    asignados_tarde += 1
+                pt_idx += 1
 
     return horarios
 

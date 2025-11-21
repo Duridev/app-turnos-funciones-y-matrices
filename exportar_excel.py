@@ -11,6 +11,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from datetime import datetime
+from config import SHIFT_HORARIOS
 
 
 def exportar_informe_completo(ruta_archivo, parametros, demanda, matriz_turnos,
@@ -211,6 +212,8 @@ def exportar_informe_completo(ruta_archivo, parametros, demanda, matriz_turnos,
             ws_leyenda[f'B{fila}'] = "No trabaja (Part-Time días de semana)"
         elif turno == "Libre":
             ws_leyenda[f'B{fila}'] = "Día de descanso"
+        elif turno in SHIFT_HORARIOS:
+            ws_leyenda[f'B{fila}'] = f"Turno de {turno.lower()} ({SHIFT_HORARIOS[turno]})"
         else:
             ws_leyenda[f'B{fila}'] = f"Turno de {turno.lower()}"
 

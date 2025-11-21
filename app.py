@@ -16,7 +16,7 @@ from tkinter import ttk, filedialog, messagebox
 from leer_excel import leer_parametros
 from main import generar_asignacion
 from ui_components import DemandaTreeview, TurnosTreeview, HorarioTrabajadoresTreeview
-from config import COLORS, FONTS, WINDOW_SIZE
+from config import COLORS, FONTS, WINDOW_SIZE, SHIFT_HORARIOS
 from exportar_excel import exportar_informe_completo
 from datetime import datetime
 
@@ -205,6 +205,22 @@ class App:
 
         ttk.Label(container, text="📅 Horario Semanal de Trabajadores", 
                  style="Title.TLabel").pack(pady=(0, 10))
+        
+        # Frame con los horarios de turnos en dos columnas
+        horarios_frame = ttk.Frame(container)
+        horarios_frame.pack(pady=(0, 10))
+        
+        # Columna izquierda
+        col_izq = ttk.Frame(horarios_frame)
+        col_izq.pack(side="left", padx=15)
+        ttk.Label(col_izq, text=f"Mañana: {SHIFT_HORARIOS['Mañana']}").pack(anchor="w")
+        ttk.Label(col_izq, text=f"Tarde: {SHIFT_HORARIOS['Tarde']}").pack(anchor="w")
+        
+        # Columna derecha
+        col_der = ttk.Frame(horarios_frame)
+        col_der.pack(side="right", padx=15)
+        ttk.Label(col_der, text=f"Intermedio: {SHIFT_HORARIOS['Intermedio']}").pack(anchor="w")
+        ttk.Label(col_der, text=f"Part-Time: {SHIFT_HORARIOS['Part-Time']}").pack(anchor="w")
 
         self.horario_trabajadores_tree = HorarioTrabajadoresTreeview(container)
         self.horario_trabajadores_tree.frame.pack(fill="both", expand=True, pady=10)

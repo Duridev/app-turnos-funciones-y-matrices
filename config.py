@@ -46,3 +46,12 @@ DIAS_SEMANA = [
 # Turnos disponibles. Mantener estos nombres coherentes con el Excel de entrada
 # y con las referencias en el resto del código.
 TURNOS = ["Mañana", "Intermedio", "Tarde"]
+
+# Horarios de cada turno (formato: "HH - HH hrs")
+# Estos se muestran en la UI y en el informe Excel
+SHIFT_HORARIOS = {
+    "Mañana": "08 - 16 hrs",
+    "Intermedio": "12 - 20 hrs",
+    "Tarde": "16 - 24 hrs",
+    "Part-Time": "13 - 24 hrs"
+}
