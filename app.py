@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from leer_excel import leer_parametros
 from main import generar_asignacion
-from ui_components import DemandaTreeview, TurnosTreeview
+from ui_components import DemandaTreeview, TurnosTreeview, HorarioTrabajadoresTreeview
 from config import COLORS, FONTS, WINDOW_SIZE
 
 
@@ -50,11 +50,32 @@ class App:
     
     def _crear_interfaz(self):
         """Crea todos los elementos de la interfaz."""
-        main_frame = ttk.Frame(self.root, padding=10)
-        main_frame.pack(fill="both", expand=True)
+        # Canvas y scrollbar para scroll vertical
+        canvas = tk.Canvas(self.root, bg=COLORS['bg_main'], highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
         
-        self._crear_botones(main_frame)
-        self._crear_paneles(main_frame)
+        # Frame scrolleable
+        scrollable_frame = ttk.Frame(canvas, padding=10)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Empaquetar canvas y scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Configurar scroll con rueda del mouse
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        self._crear_botones(scrollable_frame)
+        self._crear_paneles(scrollable_frame)
+        self._crear_seccion_trabajadores(scrollable_frame)
     
     def _crear_botones(self, parent):
         """Crea los botones de acción."""
@@ -125,6 +146,19 @@ class App:
         
         self.label_descanso_dom = ttk.Label(info_frame, text="Descansan Domingo: -")
         self.label_descanso_dom.pack(anchor="w", padx=10, pady=2)
+    
+    def _crear_seccion_trabajadores(self, parent):
+        """Crea la sección de horarios semanales de trabajadores."""
+        # Separador
+        ttk.Separator(parent, orient="horizontal").pack(fill="x", pady=20)
+        
+        # Título
+        ttk.Label(parent, text="📅 Horario Semanal de Trabajadores", 
+                 style="Title.TLabel").pack(pady=(0, 10))
+        
+        # Tabla de horarios
+        self.horario_trabajadores_tree = HorarioTrabajadoresTreeview(parent)
+        self.horario_trabajadores_tree.frame.pack(fill="both", expand=True, pady=10)
 
     def cargar_excel(self):
         """Carga y procesa el archivo Excel."""
@@ -164,11 +198,12 @@ class App:
             return
         
         full, part, turno = self.parametros
-        matriz, descanso_sab, descanso_dom = generar_asignacion(
+        matriz, descanso_sab, descanso_dom, horarios_trabajadores = generar_asignacion(
             full, part, turno, self.demanda
         )
         
         self.turnos_tree.actualizar(matriz)
+        self.horario_trabajadores_tree.actualizar(horarios_trabajadores)
         
         self.label_descanso_sab.config(text=f"✅ Descansan Sábado: {descanso_sab}")
         self.label_descanso_dom.config(text=f"✅ Descansan Domingo: {descanso_dom}")
