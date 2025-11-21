@@ -18,7 +18,7 @@ FONTS = {
 }
 
 # Dimensiones
-WINDOW_SIZE = '950x700'
+WINDOW_SIZE = '1140x700'
 ROW_HEIGHT = 32
 
 # Días de la semana

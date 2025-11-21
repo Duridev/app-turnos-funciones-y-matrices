@@ -86,7 +86,7 @@ class App:
     def _crear_botones(self, parent):
         """Crea los botones de acción."""
         buttons_frame = ttk.Frame(parent)
-        buttons_frame.pack(pady=10)
+        buttons_frame.pack(pady=10, anchor="center")
         
         ttk.Button(buttons_frame, text="📂 Cargar Excel", 
                   command=self.cargar_excel).pack(side="left", padx=5)
@@ -97,8 +97,12 @@ class App:
     
     def _crear_paneles(self, parent):
         """Crea los paneles izquierdo y derecho."""
-        container = ttk.Frame(parent)
-        container.pack(fill="both", expand=True, pady=10)
+        # Frame contenedor centrado
+        outer = ttk.Frame(parent)
+        outer.pack(fill="x", pady=10)
+        
+        container = ttk.Frame(outer)
+        container.pack(anchor="center", padx=50)
         
         # Panel izquierdo
         left_frame = ttk.Frame(container)
@@ -160,12 +164,19 @@ class App:
         # Separador
         ttk.Separator(parent, orient="horizontal").pack(fill="x", pady=20)
         
+        # Frame contenedor centrado
+        outer = ttk.Frame(parent)
+        outer.pack(fill="x")
+        
+        container = ttk.Frame(outer)
+        container.pack(anchor="center", padx=50)
+        
         # Título
-        ttk.Label(parent, text="📅 Horario Semanal de Trabajadores", 
+        ttk.Label(container, text="📅 Horario Semanal de Trabajadores", 
                  style="Title.TLabel").pack(pady=(0, 10))
         
         # Tabla de horarios
-        self.horario_trabajadores_tree = HorarioTrabajadoresTreeview(parent)
+        self.horario_trabajadores_tree = HorarioTrabajadoresTreeview(container)
         self.horario_trabajadores_tree.frame.pack(fill="both", expand=True, pady=10)
 
     def cargar_excel(self):

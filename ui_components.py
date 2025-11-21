@@ -17,7 +17,7 @@ class DemandaTreeview:
             columns=("Día", *TURNOS),
             show="headings",
             yscrollcommand=scrollbar.set,
-            height=12
+            height=8
         )
         self.tree.pack(fill="both", expand=True)
         scrollbar.config(command=self.tree.yview)
@@ -28,7 +28,7 @@ class DemandaTreeview:
         
         for turno in TURNOS:
             self.tree.heading(turno, text=turno)
-            width = 100 if turno == "Intermedio" else 80
+            width = 120 if turno == "Intermedio" else 90
             self.tree.column(turno, width=width, anchor="center")
     
     def actualizar(self, demanda):
@@ -58,7 +58,7 @@ class TurnosTreeview:
             columns=cols,
             show="headings",
             yscrollcommand=scrollbar.set,
-            height=10
+            height=8
         )
         self.tree.pack(fill="both", expand=True)
         scrollbar.config(command=self.tree.yview)
