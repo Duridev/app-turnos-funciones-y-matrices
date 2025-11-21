@@ -4,6 +4,8 @@ from leer_excel import leer_parametros
 from main import generar_asignacion
 from ui_components import DemandaTreeview, TurnosTreeview, HorarioTrabajadoresTreeview
 from config import COLORS, FONTS, WINDOW_SIZE
+from exportar_excel import exportar_informe_completo
+from datetime import datetime
 
 
 class App:
@@ -19,6 +21,10 @@ class App:
         self.path_excel = None
         self.parametros = None
         self.demanda = None
+        self.matriz_turnos = None
+        self.descanso_sab = None
+        self.descanso_dom = None
+        self.horarios_trabajadores = None
         
         self._crear_interfaz()
     
@@ -86,6 +92,8 @@ class App:
                   command=self.cargar_excel).pack(side="left", padx=5)
         ttk.Button(buttons_frame, text="⚙️ Generar Turnos", 
                   command=self.generar_turnos).pack(side="left", padx=5)
+        ttk.Button(buttons_frame, text="📥 Exportar a Excel", 
+                  command=self.exportar_informe).pack(side="left", padx=5)
     
     def _crear_paneles(self, parent):
         """Crea los paneles izquierdo y derecho."""
@@ -202,6 +210,12 @@ class App:
             full, part, turno, self.demanda
         )
         
+        # Guardar datos para exportación
+        self.matriz_turnos = matriz
+        self.descanso_sab = descanso_sab
+        self.descanso_dom = descanso_dom
+        self.horarios_trabajadores = horarios_trabajadores
+        
         self.turnos_tree.actualizar(matriz)
         self.horario_trabajadores_tree.actualizar(horarios_trabajadores)
         
@@ -209,6 +223,43 @@ class App:
         self.label_descanso_dom.config(text=f"✅ Descansan Domingo: {descanso_dom}")
         
         messagebox.showinfo("Éxito", "✔️ Turnos generados correctamente.")
+    
+    def exportar_informe(self):
+        """Exporta el informe completo a Excel."""
+        if not self.horarios_trabajadores:
+            messagebox.showwarning("Advertencia", 
+                "Primero debes generar los turnos antes de exportar.")
+            return
+        
+        # Diálogo para guardar archivo
+        fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_sugerido = f"Informe_Turnos_{fecha_actual}.xlsx"
+        
+        ruta = filedialog.asksaveasfilename(
+            title="Guardar informe",
+            defaultextension=".xlsx",
+            initialfile=nombre_sugerido,
+            filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
+        )
+        
+        if not ruta:
+            return
+        
+        try:
+            exportar_informe_completo(
+                ruta,
+                self.parametros,
+                self.demanda,
+                self.matriz_turnos,
+                self.descanso_sab,
+                self.descanso_dom,
+                self.horarios_trabajadores
+            )
+            messagebox.showinfo("Éxito", 
+                f"✔️ Informe exportado correctamente a:\n{ruta}")
+        except Exception as e:
+            messagebox.showerror("Error", 
+                f"No se pudo exportar el informe:\n{e}")
 
 
 
